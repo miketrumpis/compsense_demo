@@ -1,6 +1,25 @@
 import numpy as np
 
 def jpeg_zigzag(nrow, ncol):
+    """
+    Find the indexing in an (nrow, ncol) matrix that simulate jpeg's
+    zigzag indexing.
+
+    Parameters
+    ----------
+
+    nrow, ncol : int
+      Matrix dimensions
+
+    Returns
+    -------
+
+    z : (vector) ndarray
+      Vector of indices in the flattened, row-major representation of
+      the matrix
+    coords : ndarray
+      Matrix coordinates of the indices, eg: list of (i,j) matrix coordinates
+    """
 
     map = np.zeros((nrow, ncol), 'i')
     pairs = np.zeros((nrow*ncol, 2), 'i')
@@ -10,7 +29,9 @@ def jpeg_zigzag(nrow, ncol):
     while cur < nrow*ncol:
         map[ir,ic] = cur
         pairs[cur] = ir, ic
-        z[cur] = nr*ic + ir
+##         z[cur] = nrow*ic + ir
+        # let's count row-major
+        z[cur] = ir*ncol + ic
         if state==1:
             if ic < ncol-1:
                 ic += 1
@@ -50,4 +71,4 @@ def jpeg_zigzag(nrow, ncol):
             else:
                 state = 1
 
-    return z, pairs, map
+    return z, pairs

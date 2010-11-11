@@ -1,0 +1,4 @@
+*.pyc
+*.*~
+# Mac droppings
+.DS_Store

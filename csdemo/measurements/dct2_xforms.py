@@ -24,6 +24,7 @@ def A_dct2(x, n, omega):
     x.shape = (n,n)
     y = fftpack.dct(x, type=2, axis=0, norm='ortho')
     y = fftpack.dct(y, type=2, axis=1, norm='ortho')
+    x.shape = (n*n,)
     return y.flat[omega]
 
 def At_dct2(y, n, omega):

@@ -20,31 +20,36 @@ def noiselet_apply_matrix(x):
         x.shape = oshape + (1,)
     m, n = x.shape
 
-    if not (is_power_of_two(m) and is_power_of_two(n)):
+    if not ((m==1 or is_power_of_two(m)) and \
+            (n==1 or is_power_of_two(n))):
         raise ValueError('Matrix dimensions must be powers of 2')
 
-    cdef cnp.ndarray[double, ndim=2] y = np.empty((m,n), 'd')
-
+    cdef cnp.ndarray[double, ndim=2] y = np.zeros((m,n), 'd')
+    print 'dimensions:', m, n
     cdef Py_ssize_t i, j, k, c, d
     cdef double temp
+    j = 0
     while j < n:
         # apply noiselet vector to x[:,j]
 
         c = m - 1
         for i in xrange(m>>1):
-            k = i ** c
-            y[i,j] = x[i,j] + x[i,k]
-            y[i,k] = x[i,j] - x[i,k]
+            k = i ^ c
+            y[i,j] = x[i,j] + x[k,j]
+            y[k,j] = x[i,j] - x[k,j]
         d = c >> 1
         while d > 0:
             for i in xrange(m>>1):
-                k = i**c
-                k = k**d
+                k = i ^ c ^ d
                 temp = y[i,j]
                 y[i,j] = y[i,j] - y[k,j]
                 y[k,j] = temp + y[k,j]
-    if x.shape != oshape:
-        y.shape = oshape
-        x.shape = oshape
+            d = d >> 1
+        j += 1
+    
+    # The following clause is not allowed, due to the strict Cython construction
+##     if x.shape != oshape:
+##         y.shape = oshape
+##         x.shape = oshape
     return y
                 

@@ -19,14 +19,16 @@ help:
 
 all: ext html test
 
-ext: _realnoiselet.so
+ext: realnoiselet.so jpgzzind.so
 
 test:   ext
 	nosetests .
 
-html:  ${PKGDIR}/measurements/_realnoiselet.html
+html:  ${PKGDIR}/measurements/realnoiselet.html ${PKGDIR}/utils/jpgzzind.html
 
-_realnoiselet.so: ${PKGDIR}/measurements/_realnoiselet.c
+realnoiselet.so: ${PKGDIR}/measurements/realnoiselet.c
+jpgzzind.so: ${PKGDIR}/utils/jpgzzind.c
+
 	python setup.py build_ext --inplace
 
 # Phony targets for cleanup and similar uses
@@ -38,7 +40,7 @@ clean:
 	- find ${PKGDIR} -name "*.c" -print0 | xargs -0 rm
 	- find ${PKGDIR} -name "*.html" -print0 | xargs -0 rm
 	- find . -name "*.pyc" -print0 | xargs -0 rm
-	- cd doc && make clean
+#	- cd doc && make clean
 	rm -rf build
 
 # Suffix rules

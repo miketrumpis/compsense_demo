@@ -1,5 +1,11 @@
-import numpy as np
+""" -*- python -*- file
+"""
 
+import numpy as np
+cimport numpy as cnp
+cimport cython
+
+@cython.boundscheck(False)
 def jpeg_zigzag(nrow, ncol):
     """
     Find the indexing in an (nrow, ncol) matrix that simulate jpeg's
@@ -21,14 +27,15 @@ def jpeg_zigzag(nrow, ncol):
       Matrix coordinates of the indices, eg: list of (i,j) matrix coordinates
     """
 
-    map = np.zeros((nrow, ncol), 'i')
-    pairs = np.zeros((nrow*ncol, 2), 'i')
-    z = np.zeros((nrow*ncol,), 'i')
+    cdef cnp.ndarray[int, ndim=2] pairs = np.zeros((nrow*ncol, 2), 'i')
+    cdef cnp.ndarray[int, ndim=1] z = np.zeros((nrow*ncol,), 'i')
 
-    cur = 0; ir = 0; ic = 0; state = 1
+    cdef Py_ssize_t cur, ir, ic
+    cur = 0; ir = 0; ic = 0
+    state = 1
     while cur < nrow*ncol:
-        map[ir,ic] = cur
-        pairs[cur] = ir, ic
+        pairs[cur,0] = ir
+        pairs[cur,1] = ic
 ##         z[cur] = nrow*ic + ir
         # let's count row-major
         z[cur] = ir*ncol + ic

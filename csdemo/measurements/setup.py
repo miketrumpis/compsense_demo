@@ -11,10 +11,10 @@ def configuration(parent_package='', top_path=None):
 
     # if Cython is present, then try to build the pyx source
     if has_cython:
-        src = ['_realnoiselet.pyx']
+        src = ['realnoiselet.pyx']
     else:
-        src = ['_realnoiselet.c']
-    config.add_extension('_realnoiselet', src, include_dirs=[get_include()])
+        src = ['realnoiselet.c']
+    config.add_extension('realnoiselet', src, include_dirs=[get_include()])
     
     return config
 

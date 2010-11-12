@@ -3,6 +3,7 @@
 import numpy as np
 import PIL.Image as Image
 import scipy.optimize as opt
+from scipy.sparse import LinearOperator, cg
 
 from csdemo.utils.bdct_linapprox_ordering import bdct_linapprox_ordering
 from csdemo.utils.psnr import psnr
@@ -52,9 +53,9 @@ y2 = Phi2(x)
 
 # optimal l2 solution for compressed sensing
 PPt = lambda z: Phi(Phit(z))
-## foo = opt.fmin_cg(PPt, y, gtol=1e-8, norm=2, maxiter=200)
-foo = cgsolve(PPt, y, 1e-8, 200, verbose=True)
-x0 = Phit(foo)
+A = LinearOperator( (K1+K2, K1+K2), matvec=PPt, dtype=y.dtype )
+y0, i = cg(A, y, maxiter=200)
+x0 = Phit(y0)
 
 # linear reconstruction
 xlin = Phi2t(y2).reshape(n, n)

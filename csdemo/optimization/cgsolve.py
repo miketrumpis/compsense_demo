@@ -44,9 +44,9 @@ def cgsolve(A, b, tol, maxiter, verbose=False):
             print 'cg: Iter', numiter,
             print 'Best resid = %8.3f, Current resid = %8.3f'%(bestres, np.sqrt(delta/delta0))
 
-if verbose:
-    print 'cg: Iterations =', numiter, 'Best resid = %14.8f'%bestres
+    if verbose:
+        print 'cg: Iterations =', numiter, 'Best resid = %14.8f'%bestres
 
-return bestx, bestres, numiter
+    return bestx, bestres, numiter
     
     

@@ -25,7 +25,6 @@ def noiselet_apply_matrix(x):
         raise ValueError('Matrix dimensions must be powers of 2')
 
     cdef cnp.ndarray[double, ndim=2] y = np.zeros((m,n), 'd')
-    print 'dimensions:', m, n
     cdef Py_ssize_t i, j, k, c, d
     cdef double temp
     j = 0

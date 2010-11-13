@@ -3,15 +3,14 @@
 import numpy as np
 import PIL.Image as Image
 import scipy.optimize as opt
-from scipy.sparse import LinearOperator, cg
+from scipy.sparse.linalg import LinearOperator, cg
 
 from csdemo.utils.bdct_linapprox_ordering import bdct_linapprox_ordering
 from csdemo.utils.psnr import psnr
 from csdemo.measurements.dct2_xforms import A_dct2, At_dct2
 from csdemo.measurements.lpnoiselet_xforms import A_lpnlet, At_lpnlet
-from csdemo.optimization.cgsolve import cgsolve
 
-pic = np.array( Image.open(open('man.tiff')) )
+pic = np.array( Image.open(open('cameraman.tif')) )
 
 n = pic.shape[0]
 x = pic.flatten().astype('d')

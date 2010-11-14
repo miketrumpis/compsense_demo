@@ -1,5 +1,9 @@
+*.so
 build/
 *.pyc
 *.*~
 # Mac droppings
 .DS_Store
+# Original MATLAB code
+SPmag-CS-Code/
+SPmag-CS-Code.zip

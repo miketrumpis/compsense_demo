@@ -2,9 +2,85 @@ import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg as sp_la
 
-def tvqc_newton(x0, t0, A, At, b, eps, tau,
-                newton_tol, newton_maxiter,
-                cg_tol, cg_maxiter):
+def _make_TV_operators(n):
+    # these are the sparse horizontal and vertical differencing
+    # operators for TV
+
+    # these are constructed under the assumption that the 2D image
+    # has been flattened from a row-major storage -- IE, two adjacent
+    # pixels in a row are can be found at locations x[i] and x[i+1],
+    # and two adjacent pixels in a column can be found at locations
+    # x[k] and x[k+ncol]
+
+    # horizontal difference
+    # want a pattern of [-1]*n-1 + [0] repeated n times on the main diagonal
+    k0 = np.concatenate( (-np.ones((n,n-1)), np.zeros((n,1))), axis=1).ravel()
+    k1 = np.concatenate( (np.zeros((n,1)), np.ones((n,n-1))), axis=1).ravel()
+    Dh = sparse.spdiags(np.array([k0,k1]), (0,1), n*n, n*n)
+
+    # vertical difference
+    # want a pattern of [-1]*n*(n-1) + [0]*n on the diagonal
+    # and a pattern of 1s on the nth super-diagonal
+    k0 = np.zeros(n*n)
+    k0[:n*n-n] = -1
+    k1 = np.ones(n*n)
+    k1[:n] = 0
+    Dv = sparse.spdiags(np.array([k0,k1]), (0,n), n*n, n*n)
+
+    return Dh, Dv
+
+def logbarrier(x0, A, At, b, epsilon,
+               lb_tol=1e-3, mu=10, cg_tol=1e-8, cg_maxiter=200):
+
+    newton_tol = lb_tol
+    newton_maxiter = 50
+
+    N = len(x0)
+    n = np.round(np.sqrt(N))
+
+    Dh, Dv = _make_TV_operators(n)
+
+    x = x0
+    Dhx = Dh.matvec(x); Dvx = Dv.matvec(x)
+
+    LTV = np.sqrt(Dhx**2 + Dvx**2)
+    t = (0.95 * LTV) + (0.1 * LTV.max())
+
+    # choose initial value of tau so that the duality gap after the first
+    # step will be about the origial TV
+    tau = (N+1)/LTV.sum()
+
+    lb_iter = np.ceil((np.log(N+1) - np.log(lb_tol) - np.log(tau)) / np.log(mu))
+
+    print 'Number of log barrier iterations =', lb_iter
+
+    total_iter = 0
+    for i in xrange(int(lb_iter)):
+        xp, tp, n_iter = newton(
+            x, t, A, At, b, epsilon, tau,
+            newton_tol, newton_maxiter, cg_tol, cg_maxiter
+            )
+        total_iter += n_iter
+
+        Dhxp = Dh.matvec(xp); Dvxp = Dv.matvec(xp)
+        tvxp = (Dhxp**2 + Dvxp**2) ** 0.5
+        tvxp = tvxp.sum()
+
+        print 'Log barrier iter =', i,
+        print 'TV= %1.3f,'%tvxp,
+        print 'functional = %8.3f,'%tp.sum(),
+        print 'tau = %8.3f,'%tau,
+        print 'total newton iter =', total_iter
+
+        x = xp
+        t = tp
+        tau = mu*tau
+
+    return xp, tp
+
+def newton(x0, t0, A, At, b, eps, tau,
+           newton_tol, newton_maxiter,
+           cg_tol, cg_maxiter):
 
     alpha = 0.01
     beta = 0.5
@@ -26,32 +102,10 @@ def tvqc_newton(x0, t0, A, At, b, eps, tau,
         Atdot = lambda z: At.matvec(z)
         use_cg = True
 
-    # these are the sparse horizontal and vertical differencing
-    # operators for TV
-
-    # these are constructed under the assumption that the 2D image
-    # has been flattened from a row-major storage -- IE, two adjacent
-    # pixels in a row are can be found at locations x[i] and x[i+1],
-    # and two adjacent pixels in a column can be found at locations
-    # x[k] and x[k+ncol]
-
     N = len(x0)
     n = np.round(np.sqrt(N))
 
-    # horizontal difference
-    # want a pattern of [-1]*n-1 + [0] repeated n times on the main diagonal
-    k0 = np.concatenate( (-np.ones((n,n-1)), np.zeros((n,1))), axis=1).ravel()
-    k1 = np.concatenate( (np.zeros((n,1)), np.ones((n,n-1))), axis=1).ravel()
-    Dh = sparse.spdiags(np.array([k0,k1]), (0,1), n, n)
-
-    # vertical difference
-    # want a pattern of [-1]*n*(n-1) + [0]*n on the diagonal
-    # and a pattern of 1s on the nth super-diagonal
-    k0 = np.zeros(n*n)
-    k0[:n*n-n] = -1
-    k1 = np.ones(n*n)
-    k1[:n] = 0
-    Dv = sparse.spdiags(np.array([k0,k1]), (0,n), n, n)
+    Dh, Dv = _make_TV_operators(n)
 
     # initial point
     x = x0
@@ -70,7 +124,8 @@ def tvqc_newton(x0, t0, A, At, b, eps, tau,
         Atr = Atdot(r)
         ntgx = Dh.T.matvec( Dhx/ft ) + Dv.T.matvec( Dvx/ft ) + Atr/fe
         ntgt = -tau - t/ft
-        gradf = -(1/tau) * np.array([ntgx, ntgt])
+##         gradf = -(1/tau) * np.array([ntgx, ntgt])
+        gradf = -np.r_[ntgx, ntgt]/tau
 
         sig22 = 1/ft + (t**2)/(ft**2)
         sig12 = -t/(ft**2)
@@ -82,7 +137,7 @@ def tvqc_newton(x0, t0, A, At, b, eps, tau,
         if use_cg:
             
             h11pfun = lambda z: H11p(
-                z, A, At, Dh, Dv, Dhx, Dvx, sigb, ft, fe, Atr
+                z, Adot, Atdot, Dh, Dv, Dhx, Dvx, sigb, ft, fe, Atr
                 )
             L = sp_la.LinearOperator( (N,N), matvec=h11pfun, dtype=w1p.dtype )
             dx, i = sp_la.cg(L, w1p, tol=cg_tol, maxiter=cg_maxiter)
@@ -94,10 +149,10 @@ def tvqc_newton(x0, t0, A, At, b, eps, tau,
             cg_iter = i
             # in tvqc_newton.m, the residual is measured as the proportion of
             # the residual energy to the energy of b (w1p, here)
-            eb = np.dot(w1p, w1p)
-            r = L.matvec(dx) - w1p
-            er = np.dot(r, r)
-            cg_res = er/eb
+            nrg_b = np.dot(w1p, w1p)
+            err = L.matvec(dx) - w1p
+            nrg_err = np.dot(err, err)
+            cg_res = nrg_err / nrg_b
             if 2*cg_res > 1:
                 print 'Newton: did not solve system, returning previous iterate'
                 return x, t, n_iter
@@ -107,6 +162,7 @@ def tvqc_newton(x0, t0, A, At, b, eps, tau,
 
         Dhdx = Dh.matvec(dx)
         Dvdx = Dv.matvec(dx)
+        dt = 1/sig22 * (ntgt - sig12*(Dhx*Dhdx + Dvx*Dvdx))
 
         # minimum step size that stays in the interior
         s = 1
@@ -127,7 +183,8 @@ def tvqc_newton(x0, t0, A, At, b, eps, tau,
         ftp = (Dhxp**2 + Dvxp**2 - tp**2)/2.0
         fep = (np.dot(rp, rp) - eps**2)/2.0
         fp = tp.sum() - (np.log(-ftp).sum() + np.log(-fep).sum())/tau
-        flin = f + alpha*s* np.dot(gradf.T, np.array([dx, dt]))
+##         flin = f + alpha*s* np.dot(gradf.T, np.array([dx, dt]))
+        flin = f + alpha*s*np.dot(gradf, np.r_[dx, dt])
         back_iter = 0
         while fp > flin:
             s = beta*s
@@ -137,7 +194,8 @@ def tvqc_newton(x0, t0, A, At, b, eps, tau,
             ftp = (Dhxp**2 + Dvxp**2 - tp**2)/2.0
             fep = (np.dot(rp, rp) - eps**2)/2.0
             fp = tp.sum() - (np.log(-ftp).sum() + np.log(-fep).sum())/tau
-            flin = f + alpha*s* np.dot(gradf.T, np.array([dx, dt]))
+##             flin = f + alpha*s* np.dot(gradf.T, np.array([dx, dt]))
+            flin = f + alpha*s*np.dot(gradf, np.r_[dx, dt])
             back_iter += 1
             if back_iter > 32:
                 print 'Stuck on backtracking line search, ',
@@ -147,29 +205,33 @@ def tvqc_newton(x0, t0, A, At, b, eps, tau,
         x = xp; t = tp; r = rp; Dvx = Dvxp; Dhx = Dhxp
         ft = ftp; fe = fep; f = fp
 
-        dx_dt = np.array([dx, dt])
-        lambda2 = -np.dot(gradf.T, dx_dt)
-        # XXX: don't know what matlab's "norm" does
-        stepsize = s*np.linalg.norm(dx_dt)
+##         dx_dt = np.array([dx, dt])
+##         lambda2 = -np.dot(gradf.T, dx_dt)
+        dx_dt = np.r_[dx, dt]
+        lambda2 = -np.dot(gradf, dx_dt)
+        stepsize = s*np.linalg.norm(dx_dt, ord=2)
         n_iter += 1
         done = lambda2/2.0 < newton_tol or n_iter >= newton_maxiter
 
         print 'Newton iter =', n_iter, 'Functional = %8.3f'%f,
-        print 'Newton decrement = %8.3f'%lambda2/2.0,
+        print 'Newton decrement = %8.3f'%(lambda2/2.0),
         print 'Stepsize = %8.3e'%stepsize,
         print 'Cone iterations =', cone_iter,'Backtrack iterations =', back_iter
         if use_cg:
             print 'CG Res = %8.3e,'%cg_res, 'CG Iter =', cg_iter
 
-def H11p(v, Adot, Atdot, Dh, Dv, Dhx, Dvx, sigb, ft, fe, atr):
+        return x, t, n_iter
+
+def H11p(v, A, At, Dh, Dv, Dhx, Dvx, sigb, ft, fe, atr):
+    # A, At are callable operators on v
 
     Dhv = Dh.matvec(v)
     Dvv = Dv.matvec(v)
 
     a1 = (-1/ft + sigb*(Dhx**2))*Dhv + sigb*Dhx*Dvx*Dvv
-    a2 = (-1/ft + sibg*(Dvx**2))*Dvv + sigb*Dhx*Dvx*Dhv
+    a2 = (-1/ft + sigb*(Dvx**2))*Dvv + sigb*Dhx*Dvx*Dhv
 
-    a3 = (1/fe * Atdot(Adot(v))) + (1/(fe**2) * np.dot(atr, v) * atr) 
+    a3 = (1/fe * At(A(v))) + (1/(fe**2) * np.dot(atr, v) * atr) 
 
     y = Dh.T.matvec(a1) + Dv.T.matvec(a2) - a3
     return y

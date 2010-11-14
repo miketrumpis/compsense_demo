@@ -1,4 +1,4 @@
-from _realnoiselet import noiselet_apply_matrix
+from realnoiselet import noiselet_apply_matrix
 
 def A_noiselet(x, omega):
     n = len(x)

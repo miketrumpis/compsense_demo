@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+from time import time
 import numpy as np
 import PIL.Image as Image
 import scipy.optimize as opt
@@ -9,6 +9,8 @@ from csdemo.utils.bdct_linapprox_ordering import bdct_linapprox_ordering
 from csdemo.utils.psnr import psnr
 from csdemo.measurements.dct2_xforms import A_dct2, At_dct2
 from csdemo.measurements.lpnoiselet_xforms import A_lpnlet, At_lpnlet
+
+import csdemo.optimization.tvqc as tvqc
 
 pic = np.array( Image.open(open('cameraman.tif')) )
 
@@ -57,7 +59,38 @@ y0, i = cg(A, y, maxiter=200)
 x0 = Phit(y0)
 
 # linear reconstruction
-xlin = Phi2t(y2).reshape(n, n)
+xlin = Phi2t(y2)
 
+# parameters for optimization
+lb_tol = 918
+mu = 5
+cg_tol = 1e-8
+cg_maxiter = 800
+
+# lowpass tv recovery
+eps2 = 1e-3 * np.dot(y2,y2)**0.5
+# make LinearOperators from Phi2, Phi2t
+# Phi2 is (K1+K2, N)
+A = LinearOperator( (K1+K2, N), matvec=Phi2, dtype=y2.dtype )
+# Phi2t is (N, K1+K2)
+At = LinearOperator( (N, K1+K2), matvec=Phi2t, dtype=y2.dtype )
+print 'finding LPTV solution'
+xlptv, tlptv = tvqc.logbarrier(
+    xlin, A, At, y2, eps2, lb_tol, mu, cg_tol, cg_maxiter
+    )
+xlptv.shape = (n,n)
+
+# CS recovery
+eps = 1e-3 * np.dot(y,y)**0.5
+A = LinearOperator( (K1+K2, N), matvec=Phi, dtype=y.dtype )
+At = LinearOperator( (N, K1+K2), matvec=Phit, dtype=y.dtype )
+xp, tp = tvqc.logbarrier(
+    x0, A, At, y, eps, lb_tol, mu, cg_tol, cg_maxiter
+    )
+xp.shape = (n, n)
+
+xlin.shape = (n,n)
 print 'K =', K1, '+', K2, '=', K1+K2
 print 'DCT PSNR = %5.2f'%psnr(pic, xlin)
+print 'LPTV PSNR = %5.2f'%psnr(pic, xlptv)
+print 'CS PSNR = %5.2f'%psnr(pic, xp)

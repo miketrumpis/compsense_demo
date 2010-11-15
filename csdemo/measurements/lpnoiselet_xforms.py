@@ -33,5 +33,7 @@ def A_noiselet(x, omega):
 
 def At_noiselet(y, omega, n):
     vn = np.zeros((n,), 'd')
-    vn[omega] = y/np.sqrt(n)
-    return noiselet_apply_matrix(vn).squeeze()
+    vn[omega] = y
+    v = noiselet_apply_matrix(vn).squeeze()
+    v /= np.sqrt(n)
+    return v

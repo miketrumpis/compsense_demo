@@ -28,7 +28,7 @@ K1 = 1000
 omega1 = lporder[:K1]
 
 # "% for random projection, avoid mean" -- I think avoid sampling DCT at k=0
-q = np.arange(1,N)
+q = np.arange(N)
 np.random.shuffle(q)
 
 # K2 = number of auxiliary measurements
@@ -40,7 +40,7 @@ omega2 = q[:K2]
 
 # for DCT + noiselet approximation
 Phi = lambda z: A_lpnlet(z, n, omega1, omega2)
-Phit = lambda z: At_lpnlet(z, n, omega2, omega2)
+Phit = lambda z: At_lpnlet(z, n, omega1, omega2)
 
 # for linear and tvlp approximations
 om_lin = lporder[:(K1+K2)]
@@ -52,14 +52,20 @@ Phi2t = lambda z: At_dct2(z, n, om_lin)
 y = Phi(x)
 y2 = Phi2(x)
 
-# optimal l2 solution for compressed sensing
+# linear DCT reconstruction
+xlin = Phi2t(y2)
+
+# optimal l2 solution for compressed sensing, use this
+# image as a starting point for CS optimization
 PPt = lambda z: Phi(Phit(z))
 A = LinearOperator( (K1+K2, K1+K2), matvec=PPt, dtype=y.dtype )
-y0, i = cg(A, y, maxiter=200)
+y0, i = cg(A, y, tol=1e-8, maxiter=200)
+if i != 0:
+    if i < 0:
+        raise ValueError('bad inputs to CG algorithm')
+    else:
+        print 'Warning, CG did not converge after', i, 'iterations'
 x0 = Phit(y0)
-
-# linear reconstruction
-xlin = Phi2t(y2)
 
 # parameters for optimization
 lb_tol = 918

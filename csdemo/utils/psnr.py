@@ -5,9 +5,8 @@ def psnr(orig, recon):
     Calculate the PSNR between the original and reconstructed image
     """
 
-    m, n = orig.shape
     err = orig - recon
-    err_sq = np.dot(err.flatten(), err.flatten())
-    snr = 10*np.log10(255*255*m*n/err_sq)
+    l2_err = np.dot(err.ravel(), err.ravel())**0.5
+    snr = 20*np.log10(256*255/l2_err)
     return snr
     

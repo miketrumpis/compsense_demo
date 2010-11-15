@@ -41,7 +41,7 @@ def logbarrier(x0, A, At, b, epsilon,
     Dh, Dv = _make_TV_operators(n)
 
     x = x0
-    Dhx = Dh.matvec(x); Dvx = Dv.matvec(x)
+    Dhx = Dh*x; Dvx = Dv*x
 
     LTV = np.sqrt(Dhx**2 + Dvx**2)
     t = (0.95 * LTV) + (0.1 * LTV.max())
@@ -62,7 +62,7 @@ def logbarrier(x0, A, At, b, epsilon,
             )
         total_iter += n_iter
 
-        Dhxp = Dh.matvec(xp); Dvxp = Dv.matvec(xp)
+        Dhxp = Dh*xp; Dvxp = Dv*xp
         tvxp = (Dhxp**2 + Dvxp**2) ** 0.5
         tvxp = tvxp.sum()
 
@@ -75,7 +75,7 @@ def logbarrier(x0, A, At, b, epsilon,
         x = xp
         t = tp
         tau = mu*tau
-
+    print ''
     return xp, tp
 
 def newton(x0, t0, A, At, b, eps, tau,
@@ -95,11 +95,16 @@ def newton(x0, t0, A, At, b, eps, tau,
         Atdot = lambda z: np.dot(At,z)
         use_cg = False
         AtA = np.dot(A.T,A)
-    else:
+    elif isinstance(A, sp_la.LinearOperator):
         assert isinstance(At, sp_la.LinearOperator), \
                'inconsistent arguments for A, At'
         Adot = lambda z: A.matvec(z)
         Atdot = lambda z: At.matvec(z)
+        use_cg = True
+    elif callable(A):
+        assert callable(At), 'inconsistent arguments for A, At'
+        Adot = A
+        Atdot = At
         use_cg = True
 
     N = len(x0)
@@ -111,8 +116,8 @@ def newton(x0, t0, A, At, b, eps, tau,
     x = x0
     t = t0
     r = Adot(x) - b
-    Dhx = Dh.matvec(x)
-    Dvx = Dv.matvec(x)
+    Dhx = Dh*x
+    Dvx = Dv*x
     ft = (Dhx**2 + Dvx**2 - t**2)/2.0
     fe = (np.dot(r,r) - eps**2)/2.
     f = t.sum() - (np.log(-ft).sum() + np.log(-fe).sum())/tau
@@ -122,7 +127,7 @@ def newton(x0, t0, A, At, b, eps, tau,
     while not done:
         
         Atr = Atdot(r)
-        ntgx = Dh.T.matvec( Dhx/ft ) + Dv.T.matvec( Dvx/ft ) + Atr/fe
+        ntgx = Dh.T*( Dhx/ft ) + Dv.T*( Dvx/ft ) + Atr/fe
         ntgt = -tau - t/ft
 ##         gradf = -(1/tau) * np.array([ntgx, ntgt])
         gradf = -np.r_[ntgx, ntgt]/tau
@@ -132,8 +137,8 @@ def newton(x0, t0, A, At, b, eps, tau,
         sigb = 1/(ft**2) - (sig12**2)/sig22
 
         w1p = ntgx - \
-              Dh.T.matvec( Dhx*(sig12/sig22)*ntgt ) - \
-              Dv.T.matvec( Dvx*(sig12/sig22)*ntgt )
+              Dh.T*( Dhx*(sig12/sig22)*ntgt ) - \
+              Dv.T*( Dvx*(sig12/sig22)*ntgt )
         if use_cg:
             
             h11pfun = lambda z: H11p(
@@ -145,23 +150,22 @@ def newton(x0, t0, A, At, b, eps, tau,
                 if i < 0:
                     raise ValueError('Input errors to conj grad solver')
                 if i > 0:
-                    print 'conj grad not convergent after', i, 'iterations'
-            cg_iter = i
-            # in tvqc_newton.m, the residual is measured as the proportion of
-            # the residual energy to the energy of b (w1p, here)
-            nrg_b = np.dot(w1p, w1p)
-            err = L.matvec(dx) - w1p
+                    print 'CG not convergent after', i, 'iterations.',
+                    print 'Returning previous iterate'
+                    return x, t, n_iter
+            # The residual is measured as the proportion of
+            # the residual error energy to the energy of b (w1p, here)
+            # IE, ||Ax^ - b|| / ||b||
+            err = L*dx - w1p
             nrg_err = np.dot(err, err)
-            cg_res = nrg_err / nrg_b
-            if 2*cg_res > 1:
-                print 'Newton: did not solve system, returning previous iterate'
-                return x, t, n_iter
+            nrg_b = np.dot(w1p, w1p)
+            cg_res = (nrg_err / nrg_b)**0.5
             Adx = Adot(dx)
         else:
             raise NotImplemented('this clause not written')
 
-        Dhdx = Dh.matvec(dx)
-        Dvdx = Dv.matvec(dx)
+        Dhdx = Dh*dx
+        Dvdx = Dv*dx
         dt = 1/sig22 * (ntgt - sig12*(Dhx*Dhdx + Dvx*Dvdx))
 
         # minimum step size that stays in the interior
@@ -182,8 +186,7 @@ def newton(x0, t0, A, At, b, eps, tau,
         # backtracking line search
         ftp = (Dhxp**2 + Dvxp**2 - tp**2)/2.0
         fep = (np.dot(rp, rp) - eps**2)/2.0
-        fp = tp.sum() - (np.log(-ftp).sum() + np.log(-fep).sum())/tau
-##         flin = f + alpha*s* np.dot(gradf.T, np.array([dx, dt]))
+        fp = tp.sum() - (np.log(-ftp).sum() + np.log(-fep))/tau
         flin = f + alpha*s*np.dot(gradf, np.r_[dx, dt])
         back_iter = 0
         while fp > flin:
@@ -193,8 +196,7 @@ def newton(x0, t0, A, At, b, eps, tau,
 
             ftp = (Dhxp**2 + Dvxp**2 - tp**2)/2.0
             fep = (np.dot(rp, rp) - eps**2)/2.0
-            fp = tp.sum() - (np.log(-ftp).sum() + np.log(-fep).sum())/tau
-##             flin = f + alpha*s* np.dot(gradf.T, np.array([dx, dt]))
+            fp = tp.sum() - (np.log(-ftp).sum() + np.log(-fep))/tau
             flin = f + alpha*s*np.dot(gradf, np.r_[dx, dt])
             back_iter += 1
             if back_iter > 32:
@@ -205,8 +207,6 @@ def newton(x0, t0, A, At, b, eps, tau,
         x = xp; t = tp; r = rp; Dvx = Dvxp; Dhx = Dhxp
         ft = ftp; fe = fep; f = fp
 
-##         dx_dt = np.array([dx, dt])
-##         lambda2 = -np.dot(gradf.T, dx_dt)
         dx_dt = np.r_[dx, dt]
         lambda2 = -np.dot(gradf, dx_dt)
         stepsize = s*np.linalg.norm(dx_dt, ord=2)
@@ -218,21 +218,22 @@ def newton(x0, t0, A, At, b, eps, tau,
         print 'Stepsize = %8.3e'%stepsize,
         print 'Cone iterations =', cone_iter,'Backtrack iterations =', back_iter
         if use_cg:
-            print 'CG Res = %8.3e,'%cg_res, 'CG Iter =', cg_iter
+            print 'CG Res = %8.3e,'%cg_res
+        print ''
 
         return x, t, n_iter
 
 def H11p(v, A, At, Dh, Dv, Dhx, Dvx, sigb, ft, fe, atr):
     # A, At are callable operators on v
 
-    Dhv = Dh.matvec(v)
-    Dvv = Dv.matvec(v)
+    Dhv = Dh*v
+    Dvv = Dv*v
 
     a1 = (-1/ft + sigb*(Dhx**2))*Dhv + sigb*Dhx*Dvx*Dvv
     a2 = (-1/ft + sigb*(Dvx**2))*Dvv + sigb*Dhx*Dvx*Dhv
 
     a3 = (1/fe * At(A(v))) + (1/(fe**2) * np.dot(atr, v) * atr) 
 
-    y = Dh.T.matvec(a1) + Dv.T.matvec(a2) - a3
+    y = Dh.T*a1 + Dv.T*a2 - a3
     return y
         

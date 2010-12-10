@@ -71,12 +71,13 @@ def logbarrier(x0, A, At, b, epsilon,
         print 'functional = %8.3f,'%tp.sum(),
         print 'tau = %8.3f,'%tau,
         print 'total newton iter =', total_iter
+        print ''
 
         x = xp
         t = tp
         tau = mu*tau
     print ''
-    return xp, tp
+    return x, t
 
 def newton(x0, t0, A, At, b, eps, tau,
            newton_tol, newton_maxiter,
@@ -163,10 +164,9 @@ def newton(x0, t0, A, At, b, eps, tau,
             Adx = Adot(dx)
         else:
             raise NotImplemented('this clause not written')
-
         Dhdx = Dh*dx
         Dvdx = Dv*dx
-        dt = 1/sig22 * (ntgt - sig12*(Dhx*Dhdx + Dvx*Dvdx))
+        dt = (1.0/sig22) * (ntgt - sig12*(Dhx*Dhdx + Dvx*Dvdx))
 
         # minimum step size that stays in the interior
         s = 1
@@ -182,7 +182,6 @@ def newton(x0, t0, A, At, b, eps, tau,
             if cone_iter > 32:
                 print 'Stuck on cone iterations, returning previous iterate'
                 return x, t, n_iter
-
         # backtracking line search
         ftp = (Dhxp**2 + Dvxp**2 - tp**2)/2.0
         fep = (np.dot(rp, rp) - eps**2)/2.0
@@ -220,8 +219,8 @@ def newton(x0, t0, A, At, b, eps, tau,
         if use_cg:
             print 'CG Res = %8.3e,'%cg_res
         print ''
-
-        return x, t, n_iter
+    
+    return x, t, n_iter
 
 def H11p(v, A, At, Dh, Dv, Dhx, Dvx, sigb, ft, fe, atr):
     # A, At are callable operators on v
@@ -232,7 +231,7 @@ def H11p(v, A, At, Dh, Dv, Dhx, Dvx, sigb, ft, fe, atr):
     a1 = (-1/ft + sigb*(Dhx**2))*Dhv + sigb*Dhx*Dvx*Dvv
     a2 = (-1/ft + sigb*(Dvx**2))*Dvv + sigb*Dhx*Dvx*Dhv
 
-    a3 = (1/fe * At(A(v))) + (1/(fe**2) * np.dot(atr, v) * atr) 
+    a3 = (1/fe * At(A(v))) - (1/(fe**2) * np.dot(atr, v) * atr) 
 
     y = Dh.T*a1 + Dv.T*a2 - a3
     return y

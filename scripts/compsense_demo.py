@@ -19,7 +19,7 @@ x = pic.flatten().astype('d')
 N = len(x)
 
 # for repeatable experiments
-np.random.seed(1981)
+np.random.seed(1981532)
 
 # for linear approximation
 lporder = bdct_linapprox_ordering(n, n)
@@ -69,6 +69,7 @@ x0 = Phit(y0)
 
 # parameters for optimization
 lb_tol = 918
+## lb_tol = 7
 mu = 5
 cg_tol = 1e-8
 cg_maxiter = 800

@@ -14,6 +14,29 @@ def is_power_of_two(m):
 
 @cython.boundscheck(False)
 def noiselet_apply_matrix(x):
+    """
+
+    Notes:
+    1) This implementation uses exactly m*log2(m) additions/subtractions.
+    2) This is a real-valued variation of "dragon" noiselets.
+    3) This is symmetric and orthogonal. To invert, apply again and
+       divide by vector length.
+
+    Parameters
+    ----------
+
+    x : ndarray vector or matrix
+      x must be a REAL VALUED COLUMN VECTOR or MATRIX
+      m = x.shape[0] must be a POWER OF TWO
+
+    Returns
+    -------
+
+    w : ndarray matrix
+      The transformed columns(s) of x. Note, w is always 2D, even if
+      its shape is only (1,m)
+      
+    """
 
     oshape = x.shape
     if len(x.shape) < 2:

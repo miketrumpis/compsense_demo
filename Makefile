@@ -6,23 +6,16 @@
 # convenience/reminder while doing development.
 
 PKGDIR=csdemo
-#DOCDIR=${PWD}/doc
-#TESTDIR=${PKGDIR}/tests
-
 
 help:
 	@echo "Numpy/Cython tasks.  Available tasks:"
 	@echo "ext  -> build the Cython extension module."
 	@echo "html -> create annotated HTML from the .pyx sources"
-	@echo "test -> run a simple test demo."
-	@echo "all  -> Call ext, html and finally test."
+	@echo "all  -> builds ext"
 
-all: ext html test
+all: ext
 
 ext: realnoiselet.so jpgzzind.so
-
-test:   ext
-	nosetests .
 
 html:  ${PKGDIR}/measurements/realnoiselet.html ${PKGDIR}/utils/jpgzzind.html
 
@@ -40,7 +33,6 @@ clean:
 	- find ${PKGDIR} -name "*.c" -print0 | xargs -0 rm
 	- find ${PKGDIR} -name "*.html" -print0 | xargs -0 rm
 	- find . -name "*.pyc" -print0 | xargs -0 rm
-#	- cd doc && make clean
 	rm -rf build
 
 # Suffix rules

@@ -13,7 +13,7 @@ def bdct_linapprox_ordering(n, blocksize):
     n - sidelength (image is nxn)
     blocksize - sidelength of blocks
     
-    Written by: Justin Romberg, Georgia Tech
+    (originally) Written by: Justin Romberg, Georgia Tech
     Created: April 2007
     """
     if n % blocksize:

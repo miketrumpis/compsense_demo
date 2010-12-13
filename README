@@ -1,0 +1,38 @@
+.. -*- rst -*-
+
+======================================================
+ Demo of Compressive Sampling in Image Reconstruction
+======================================================
+
+This code is essentially a Scientific Python port of Justin Romberg's
+Compressive Sampling (CS) demo, which accompanied his publication
+
+J. Romberg, "Imaging via Compressive Sampling," Signal Processing
+Magazine, March 2008.
+
+The original MATLAB code can be downloaded from this web site
+
+http://users.ece.gatech.edu/~justin/spmag/
+
+Software Requirements
+---------------------
+
+* Python
+* Numpy
+* Scipy
+* C compiler
+* Cython (optional)
+
+Building And Running
+--------------------
+
+Typical Python setup::
+
+  python setup.py install --prefix=/path/to/install
+
+Once installed into a location in your PYTHONPATH, you can run the
+demos from the python shell
+
+
+
+

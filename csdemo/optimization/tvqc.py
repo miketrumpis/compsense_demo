@@ -4,7 +4,7 @@ import scipy.sparse.linalg as sp_la
 
 def _make_TV_operators(n):
     # these are the sparse horizontal and vertical differencing
-    # operators for TV
+    # operators for calculating total total variation (TV)
 
     # these are constructed under the assumption that the 2D image
     # has been flattened from a row-major storage -- IE, two adjacent
@@ -130,7 +130,6 @@ def newton(x0, t0, A, At, b, eps, tau,
         Atr = Atdot(r)
         ntgx = Dh.T*( Dhx/ft ) + Dv.T*( Dvx/ft ) + Atr/fe
         ntgt = -tau - t/ft
-##         gradf = -(1/tau) * np.array([ntgx, ntgt])
         gradf = -np.r_[ntgx, ntgt]/tau
 
         sig22 = 1/ft + (t**2)/(ft**2)

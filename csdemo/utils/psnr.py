@@ -8,6 +8,6 @@ def psnr(orig, recon):
     err = orig - recon
     l2_sq_err = np.dot(err.ravel(), err.ravel())
     ly, lx = orig.shape
-    snr = 10*np.log10(255*255*lx*ly/l2_err)
+    snr = 10*np.log10(255*255*lx*ly/l2_sq_err)
     return snr
     

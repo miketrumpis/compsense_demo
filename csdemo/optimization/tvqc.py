@@ -30,7 +30,9 @@ def _make_TV_operators(n):
     return Dh, Dv
 
 def logbarrier(x0, A, At, b, epsilon,
-               lb_tol=1e-3, mu=10, cg_tol=1e-8, cg_maxiter=200):
+               lb_tol=1e-3, mu=10, cg_tol=1e-8, cg_maxiter=200,
+               be_loud=False
+               ):
 
     newton_tol = lb_tol
     newton_maxiter = 50
@@ -58,7 +60,8 @@ def logbarrier(x0, A, At, b, epsilon,
     for i in xrange(int(lb_iter)):
         xp, tp, n_iter = newton(
             x, t, A, At, b, epsilon, tau,
-            newton_tol, newton_maxiter, cg_tol, cg_maxiter
+            newton_tol, newton_maxiter, cg_tol, cg_maxiter,
+            be_loud=be_loud
             )
         total_iter += n_iter
 
@@ -66,12 +69,13 @@ def logbarrier(x0, A, At, b, epsilon,
         tvxp = (Dhxp**2 + Dvxp**2) ** 0.5
         tvxp = tvxp.sum()
 
-        print 'Log barrier iter =', i,
-        print 'TV= %1.3f,'%tvxp,
-        print 'functional = %8.3f,'%tp.sum(),
-        print 'tau = %8.3f,'%tau,
-        print 'total newton iter =', total_iter
-        print ''
+        if be_loud:
+            print 'Log barrier iter =', i,
+            print 'TV= %1.3f,'%tvxp,
+            print 'functional = %8.3f,'%tp.sum(),
+            print 'tau = %8.3f,'%tau,
+            print 'total newton iter =', total_iter
+            print ''
 
         x = xp
         t = tp
@@ -81,7 +85,8 @@ def logbarrier(x0, A, At, b, epsilon,
 
 def newton(x0, t0, A, At, b, eps, tau,
            newton_tol, newton_maxiter,
-           cg_tol, cg_maxiter):
+           cg_tol, cg_maxiter,
+           be_loud=False):
 
     alpha = 0.01
     beta = 0.5
@@ -211,13 +216,15 @@ def newton(x0, t0, A, At, b, eps, tau,
         n_iter += 1
         done = lambda2/2.0 < newton_tol or n_iter >= newton_maxiter
 
-        print 'Newton iter =', n_iter, 'Functional = %8.3f'%f,
-        print 'Newton decrement = %8.3f'%(lambda2/2.0),
-        print 'Stepsize = %8.3e'%stepsize,
-        print 'Cone iterations =', cone_iter,'Backtrack iterations =', back_iter
-        if use_cg:
-            print 'CG Res = %8.3e,'%cg_res
-        print ''
+        if be_loud:
+            print 'Newton iter =', n_iter, 'Functional = %8.3f'%f,
+            print 'Newton decrement = %8.3f'%(lambda2/2.0),
+            print 'Stepsize = %8.3e'%stepsize,
+            print 'Cone iterations =', cone_iter,
+            print 'Backtrack iterations =', back_iter
+            if use_cg:
+                print 'CG Res = %8.3e,'%cg_res
+            print ''
     
     return x, t, n_iter
 

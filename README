@@ -21,6 +21,7 @@ Software Requirements
 * Numpy
 * Scipy
 * C compiler
+* Matplotlib (recommended)
 * Cython (optional)
 
 Building And Running
@@ -30,8 +31,24 @@ Typical Python setup::
 
   python setup.py install --prefix=/path/to/install
 
+If Cython is installed, you may re-cythonize your .pyx files by
+clearing the .c files first::
+
+  make clean
+  python setup.py install --prefix=/path/to/install
+
 Once installed into a location in your PYTHONPATH, you can run the
-demos from the python shell
+demos from the python shell::
+
+  >>> from csdemo.demos import compsense_demo
+  >>> compsense_demo.show_comparison(20000)
+
+To recreate Fig 2(a) from the "Imaging via Compressive Sampling", do
+this before going for a walk (plotting requires Matplotlib)::
+
+  >>> coefs_trials = np.linspace(1000, 30000, 12)
+  >>> dct, lptv, cs = compsense_demo.compare_at(coefs_trials, plot=True)
+
 
 
 

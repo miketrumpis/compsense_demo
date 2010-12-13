@@ -6,7 +6,8 @@ def psnr(orig, recon):
     """
 
     err = orig - recon
-    l2_err = np.dot(err.ravel(), err.ravel())**0.5
-    snr = 20*np.log10(256*255/l2_err)
+    l2_sq_err = np.dot(err.ravel(), err.ravel())
+    ly, lx = orig.shape
+    snr = 10*np.log10(255*255*lx*ly/l2_err)
     return snr
     

@@ -15,11 +15,12 @@ def _find_image(name):
     
     name, ext = p.splitext(name)
     name += '.npy'
-    data_path = p.join(__file__, p.join('imagedata', name))
+    data_path = p.join(p.split(__file__)[0], p.join('imagedata', name))
     a = np.load(data_path)
     return a
 
-def compare_recons(n_coefs, image_name='cameraman'):
+def compare_recons(n_coefs, image_name='cameraman',
+                   return_images=False, be_loud=False):
     """
     Run demo as a function of the number of coefficients used in
     reconstructing the image.
@@ -29,10 +30,12 @@ def compare_recons(n_coefs, image_name='cameraman'):
 
     DCT psnr, LPTV psnr, CS psnr
 
+    if return_images is True, then the 3 corresponding reconstructions
+    are returned following the 3-tuple of psnr measurements
+
     """
     
     pic = _find_image(image_name)
-##     pic = np.array( Image.open(open('cameraman.tif')) )
 
     n = pic.shape[0]
     x = pic.flatten().astype('d')
@@ -103,7 +106,7 @@ def compare_recons(n_coefs, image_name='cameraman'):
     At = LinearOperator( (N, K1+K2), matvec=Phi2t, dtype=y2.dtype )
     print 'finding LPTV solution'
     xlptv, tlptv = tvqc.logbarrier(
-        xlin, A, At, y2, eps2, lb_tol, mu, cg_tol, cg_maxiter
+        xlin, A, At, y2, eps2, lb_tol, mu, cg_tol, cg_maxiter, be_loud=be_loud
         )
     xlptv.shape = (n,n)
 
@@ -112,7 +115,7 @@ def compare_recons(n_coefs, image_name='cameraman'):
     A = LinearOperator( (K1+K2, N), matvec=Phi, dtype=y.dtype )
     At = LinearOperator( (N, K1+K2), matvec=Phit, dtype=y.dtype )
     xp, tp = tvqc.logbarrier(
-        x0, A, At, y, eps, lb_tol, mu, cg_tol, cg_maxiter
+        x0, A, At, y, eps, lb_tol, mu, cg_tol, cg_maxiter, be_loud=be_loud
         )
     xp.shape = (n, n)
 
@@ -121,11 +124,42 @@ def compare_recons(n_coefs, image_name='cameraman'):
     dct_psnr = psnr(pic, xlin)
     lptv_psnr = psnr(pic, xlptv)
     cs_psnr = psnr(pic, xp)
-    return dct_psnr, lptv_psnr, cs_psnr
+    r_tuple = (dct_psnr, lptv_psnr, cs_psnr)
+    if return_images:
+        r_tuple += (xlin, xlptv, xp)
+    return r_tuple
 
+def compare_at(n_coefs_trials, be_loud=False, plot=False):
+    """
+    Run a number of trials of the comparison demo, using the the given
+    sequence as the number of coefficients at each step
+    """
+
+    dct_psnrs = []
+    lptv_psnrs = []
+    cs_psnrs = []
+    for nc in n_coefs_trials:
+        dct, lptv, cs = compare_recons(nc, be_loud=be_loud)
+        dct_psnrs.append(dct)
+        lptv_psnrs.append(lptv)
+        cs_psnrs.append(cs)
+    if plot:
+        import matplotlib.pyplot as pp
+        f = pp.figure()
+        ax = f.add_subplot(111)
+        n_coefs = np.array(n_coefs_trials)
+        ax.plot(n_coefs, dct)
+        ax.plot(n_coefs, lptv)
+        ax.plot(n_coefs, cs)
+        x_min = n_coefs.min()
+        x_max = n_coefs.max()
+        x_width = x_max - x_min
+        ax.set_xlim( (x_min - 0.05*width, x_max + 0.05*width) )
+        pp.show()
+    return dct_psnrs, lptv_psnrs, cs_psnrs
 
 def show_comparison(n_coefs):
-    dct, lptv, cs = compare_recons(n_coefs)
+    dct, lptv, cs = compare_recons(n_coefs, be_loud=True)
     print 'K = 1000 +', n_coefs, '=', 1000+n_coefs
     print 'DCT PSNR = %5.2f'%dct
     print 'LPTV PSNR = %5.2f'%lptv

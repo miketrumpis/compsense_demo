@@ -148,13 +148,18 @@ def compare_at(n_coefs_trials, be_loud=False, plot=False):
         f = pp.figure()
         ax = f.add_subplot(111)
         n_coefs = np.array(n_coefs_trials)
-        ax.plot(n_coefs, dct)
-        ax.plot(n_coefs, lptv)
-        ax.plot(n_coefs, cs)
-        x_min = n_coefs.min()
-        x_max = n_coefs.max()
-        x_width = x_max - x_min
-        ax.set_xlim( (x_min - 0.05*width, x_max + 0.05*width) )
+        ax.plot(n_coefs, dct, 'b')
+        ax.plot(n_coefs, dct, 'b.')
+        ax.plot(n_coefs, lptv, 'g')
+        ax.plot(n_coefs, lptv, 'g.')
+        ax.plot(n_coefs, cs, 'r')
+        ax.plot(n_coefs, cs, 'r.')
+##         x_min = n_coefs.min()
+##         x_max = n_coefs.max()
+##         x_width = x_max - x_min
+##         ax.set_xlim( (x_min - 0.05*width, x_max + 0.05*width) )
+        ax.set_xlabel('Number of Measurements')
+        ax.set_ylabel('PSNR')
         pp.show()
     return dct_psnrs, lptv_psnrs, cs_psnrs
 
